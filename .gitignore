@@ -59,3 +59,33 @@ reportes/
 # Backups
 *.bak
 *.tmp
+# Configuracion privada y cache
+.env.*
+!.env.example
+database.json
+database.*.json
+!database.example.json
+.eslintcache
+
+# Archivos de respaldo pueden contener configuracion privada
+*.zip
+
+# Respaldos SQL: versionar únicamente el esquema público de la aplicación
+*.sql
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+*.dump
+backups/
+!src/main/database/schema.sql
+
+# Autenticación local y claves privadas
+.npmrc
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Documentación interna conservada únicamente en el equipo local
+/docs/AUDITORIA.md
+/docs/CREDENCIALES.md

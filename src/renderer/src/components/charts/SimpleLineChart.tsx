@@ -26,7 +26,7 @@ function SimpleLineChart({
   height = 260,
   xLabel = 'Tiempo',
   yLabel = 'Valor'
-}: SimpleLineChartProps) {
+}: SimpleLineChartProps): React.JSX.Element {
   const gradientId = useId().replace(/:/g, '')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
@@ -34,7 +34,7 @@ function SimpleLineChart({
     () =>
       points.filter(
         (point): point is { label?: string | null; value: number } =>
-          point.value !== null && !Number.isNaN(point.value)
+          point.value !== null && Number.isFinite(point.value)
       ),
     [points]
   )
@@ -58,25 +58,19 @@ function SimpleLineChart({
   const innerWidth = width - paddingLeft - paddingRight
   const innerHeight = height - paddingTop - paddingBottom
   const values = validPoints.map((point) => point.value)
-  const rawMin = Math.min(...values)
-  const rawMax = Math.max(...values)
+  const rawMin = values.reduce((min, value) => Math.min(min, value), Infinity)
+  const rawMax = values.reduce((max, value) => Math.max(max, value), -Infinity)
 
-  const domainPadding = rawMax === rawMin
-    ? Math.max(Math.abs(rawMax) * 0.08, 1)
-    : (rawMax - rawMin) * 0.08
+  const domainPadding =
+    rawMax === rawMin ? Math.max(Math.abs(rawMax) * 0.08, 1) : (rawMax - rawMin) * 0.08
 
   const min = rawMin - domainPadding
   const max = rawMax + domainPadding
   const range = max - min || 1
 
   const coordinates = validPoints.map((point, index) => {
-    const x =
-      paddingLeft +
-      (index / Math.max(validPoints.length - 1, 1)) * innerWidth
-    const y =
-      paddingTop +
-      innerHeight -
-      ((point.value - min) / range) * innerHeight
+    const x = paddingLeft + (index / Math.max(validPoints.length - 1, 1)) * innerWidth
+    const y = paddingTop + innerHeight - ((point.value - min) / range) * innerHeight
 
     return {
       ...point,
@@ -85,9 +79,7 @@ function SimpleLineChart({
     }
   })
 
-  const polylinePoints = coordinates
-    .map((point) => `${point.x},${point.y}`)
-    .join(' ')
+  const polylinePoints = coordinates.map((point) => `${point.x},${point.y}`).join(' ')
 
   const lastValue = validPoints[validPoints.length - 1]?.value
   const firstLabel = validPoints[0]?.label ?? 'Inicio'
@@ -112,11 +104,7 @@ function SimpleLineChart({
     <div>
       {(title || lastValue !== undefined) && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
-          {title && (
-            <p className="font-semibold text-slate-700">
-              {title}
-            </p>
-          )}
+          {title && <p className="font-semibold text-slate-700">{title}</p>}
 
           <p className="font-mono text-sm font-bold text-violet-700">
             Último: {lastValue.toFixed(2)} {unit}
@@ -148,11 +136,7 @@ function SimpleLineChart({
             stroke="rgba(100, 116, 139, 0.35)"
           />
 
-          <text
-            x={paddingLeft}
-            y={18}
-            className="fill-slate-500 text-[12px]"
-          >
+          <text x={paddingLeft} y={18} className="fill-slate-500 text-[12px]">
             {yLabel} {unit ? `(${unit})` : ''}
           </text>
 
@@ -165,27 +149,15 @@ function SimpleLineChart({
             {xLabel}
           </text>
 
-          <text
-            x={6}
-            y={paddingTop + 4}
-            className="fill-slate-500 text-[12px]"
-          >
+          <text x={6} y={paddingTop + 4} className="fill-slate-500 text-[12px]">
             {formatValue(rawMax)} {unit}
           </text>
 
-          <text
-            x={6}
-            y={height - paddingBottom + 4}
-            className="fill-slate-500 text-[12px]"
-          >
+          <text x={6} y={height - paddingBottom + 4} className="fill-slate-500 text-[12px]">
             {formatValue(rawMin)} {unit}
           </text>
 
-          <text
-            x={paddingLeft}
-            y={height - 30}
-            className="fill-slate-500 text-[11px]"
-          >
+          <text x={paddingLeft} y={height - 30} className="fill-slate-500 text-[11px]">
             {firstLabel}
           </text>
 
@@ -216,15 +188,9 @@ function SimpleLineChart({
               fill={index === currentHoverIndex ? '#A998E8' : '#7CCDB0'}
               stroke="white"
               strokeWidth="2"
-              opacity={
-                index === currentHoverIndex || coordinates.length <= 25
-                  ? 1
-                  : 0.35
-              }
+              opacity={index === currentHoverIndex || coordinates.length <= 25 ? 1 : 0.35}
             >
-              <title>
-                {`${point.label ?? 'Sin fecha'} · ${point.value.toFixed(2)} ${unit}`}
-              </title>
+              <title>{`${point.label ?? 'Sin fecha'} · ${point.value.toFixed(2)} ${unit}`}</title>
             </circle>
           ))}
 
@@ -249,11 +215,7 @@ function SimpleLineChart({
                 stroke="rgba(169,152,232,0.45)"
               />
 
-              <text
-                x={tooltipX + 12}
-                y={tooltipY + 20}
-                className="fill-slate-500 text-[12px]"
-              >
+              <text x={tooltipX + 12} y={tooltipY + 20} className="fill-slate-500 text-[12px]">
                 {hoverPoint.label ?? 'Sin fecha'}
               </text>
 

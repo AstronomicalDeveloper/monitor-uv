@@ -5,7 +5,7 @@ import GlassCard from '../components/glass/GlassCard'
 import GlassPanel from '../components/glass/GlassPanel'
 import { useApp } from '../context/AppContext'
 
-function MonitoringPage() {
+function MonitoringPage(): React.JSX.Element {
   const navigate = useNavigate()
 
   const {
@@ -24,15 +24,8 @@ function MonitoringPage() {
     stopCapture
   } = useApp()
 
-  function formatValue(
-    value: number | null | undefined,
-    decimals = 2
-  ): string {
-    if (
-      value === null ||
-      value === undefined ||
-      Number.isNaN(value)
-    ) {
+  function formatValue(value: number | null | undefined, decimals = 2): string {
+    if (value === null || value === undefined || Number.isNaN(value)) {
       return '--'
     }
 
@@ -48,9 +41,7 @@ function MonitoringPage() {
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
 
-    return [hours, minutes, seconds]
-      .map((value) => value.toString().padStart(2, '0'))
-      .join(':')
+    return [hours, minutes, seconds].map((value) => value.toString().padStart(2, '0')).join(':')
   }
 
   return (
@@ -61,9 +52,7 @@ function MonitoringPage() {
             Monitoreo
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Monitoreo en tiempo real
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Monitoreo en tiempo real</h1>
 
           <p className="mt-2 text-slate-500">
             {connected
@@ -72,28 +61,19 @@ function MonitoringPage() {
           </p>
         </div>
 
-        {!connected && (
-          <Button onClick={() => navigate('/conexion')}>
-            Ir a conexión
-          </Button>
-        )}
+        {!connected && <Button onClick={() => navigate('/conexion')}>Ir a conexión</Button>}
 
         {connected && !capturing && (
-          <Button onClick={() => navigate('/captura/nueva')}>
-            Nueva captura
-          </Button>
+          <Button onClick={() => navigate('/captura/nueva')}>Nueva captura</Button>
         )}
       </header>
 
       {(connectionError || databaseError) && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-rose-700">
-          <p className="font-semibold">
-            Problema detectado
-          </p>
+          <p className="font-semibold">Problema detectado</p>
 
-          <p className="mt-1 text-sm">
-            {connectionError || databaseError}
-          </p>
+          {connectionError && <p className="mt-1 text-sm">{connectionError}</p>}
+          {databaseError && <p className="mt-1 text-sm">{databaseError}</p>}
         </div>
       )}
 
@@ -105,18 +85,14 @@ function MonitoringPage() {
                 Sesión de captura
               </p>
 
-              <p className="mt-2 text-xl font-bold text-slate-800">
-                {activeSession.name}
-              </p>
+              <p className="mt-2 text-xl font-bold text-slate-800">{activeSession.name}</p>
 
               <p className="mt-1 text-sm text-slate-500">
                 {activeSession.location || 'Sin lugar especificado'}
               </p>
 
               {activeSession.description && (
-                <p className="mt-2 max-w-2xl text-sm text-slate-500">
-                  {activeSession.description}
-                </p>
+                <p className="mt-2 max-w-2xl text-sm text-slate-500">{activeSession.description}</p>
               )}
             </div>
 
@@ -127,7 +103,11 @@ function MonitoringPage() {
                 </p>
 
                 <p className="mt-1 font-bold text-emerald-700">
-                  {capturing ? 'Capturando' : 'Finalizada'}
+                  {capturing
+                    ? 'Capturando'
+                    : activeSession.status === 'active'
+                      ? 'Cierre pendiente'
+                      : 'Finalizada'}
                 </p>
               </div>
 
@@ -147,9 +127,7 @@ function MonitoringPage() {
                 </p>
 
                 <p className="mt-1 font-mono text-lg font-bold text-slate-800">
-                  {activeSession.mode === 'timed'
-                    ? formatTime(remainingSeconds)
-                    : 'Manual'}
+                  {activeSession.mode === 'timed' ? formatTime(remainingSeconds) : 'Manual'}
                 </p>
               </div>
 
@@ -164,7 +142,7 @@ function MonitoringPage() {
               </div>
             </div>
 
-            {capturing && (
+            {activeSession.status === 'active' && (
               <Button
                 variant="danger"
                 onClick={() => {
@@ -192,25 +170,17 @@ function MonitoringPage() {
 
             <div>
               <p className="font-semibold text-slate-800">
-                {connected
-                  ? 'Dispositivo conectado'
-                  : 'Sin conexión'}
+                {connected ? 'Dispositivo conectado' : 'Sin conexión'}
               </p>
 
-              <p className="text-sm text-slate-500">
-                {connectedPort ?? 'Puerto no disponible'}
-              </p>
+              <p className="text-sm text-slate-500">{connectedPort ?? 'Puerto no disponible'}</p>
             </div>
           </div>
 
           <div className="text-right">
-            <p className="text-sm text-slate-500">
-              Mediciones recibidas en sesión
-            </p>
+            <p className="text-sm text-slate-500">Mediciones recibidas en sesión</p>
 
-            <p className="text-2xl font-bold text-violet-700">
-              {receivedMeasurements}
-            </p>
+            <p className="text-2xl font-bold text-violet-700">{receivedMeasurements}</p>
           </div>
         </div>
       </GlassPanel>
@@ -226,15 +196,11 @@ function MonitoringPage() {
               {formatValue(measurement.uvAdc, 0)}
             </p>
 
-            <span className="mb-1 text-sm text-slate-500">
-              ADC
-            </span>
+            <span className="mb-1 text-sm text-slate-500">ADC</span>
           </div>
 
           <div className="mt-5 border-t border-white/70 pt-4">
-            <p className="text-sm text-slate-500">
-              Voltaje
-            </p>
+            <p className="text-sm text-slate-500">Voltaje</p>
 
             <p className="mt-1 text-xl font-bold text-slate-700">
               {formatValue(measurement.uvVoltage, 3)} V
@@ -242,9 +208,7 @@ function MonitoringPage() {
           </div>
 
           <div className="mt-4">
-            <p className="text-sm text-slate-500">
-              Nivel de alerta
-            </p>
+            <p className="text-sm text-slate-500">Nivel de alerta</p>
 
             <span
               className={[
@@ -264,9 +228,7 @@ function MonitoringPage() {
         </GlassCard>
 
         <GlassCard>
-          <p className="text-sm font-semibold text-slate-500">
-            Temperatura
-          </p>
+          <p className="text-sm font-semibold text-slate-500">Temperatura</p>
 
           <p className="mt-4 font-mono text-4xl font-bold text-slate-800">
             {formatValue(measurement.temperature)} °C
@@ -274,9 +236,7 @@ function MonitoringPage() {
         </GlassCard>
 
         <GlassCard>
-          <p className="text-sm font-semibold text-slate-500">
-            Humedad
-          </p>
+          <p className="text-sm font-semibold text-slate-500">Humedad</p>
 
           <p className="mt-4 font-mono text-4xl font-bold text-slate-800">
             {formatValue(measurement.humidity)} %
@@ -284,9 +244,7 @@ function MonitoringPage() {
         </GlassCard>
 
         <GlassCard>
-          <p className="text-sm font-semibold text-slate-500">
-            Presión atmosférica
-          </p>
+          <p className="text-sm font-semibold text-slate-500">Presión atmosférica</p>
 
           <p className="mt-4 font-mono text-4xl font-bold text-slate-800">
             {formatValue(measurement.pressure)} hPa
@@ -294,9 +252,7 @@ function MonitoringPage() {
         </GlassCard>
 
         <GlassCard>
-          <p className="text-sm font-semibold text-slate-500">
-            Luminosidad
-          </p>
+          <p className="text-sm font-semibold text-slate-500">Luminosidad</p>
 
           <p className="mt-4 font-mono text-4xl font-bold text-slate-800">
             {formatValue(measurement.luminosity)} lux
@@ -305,15 +261,9 @@ function MonitoringPage() {
 
         <GlassCard
           solid
-          className={
-            measurement.presence === true
-              ? 'border-emerald-200 bg-emerald-50/80'
-              : ''
-          }
+          className={measurement.presence === true ? 'border-emerald-200 bg-emerald-50/80' : ''}
         >
-          <p className="text-sm font-semibold text-slate-500">
-            Presencia
-          </p>
+          <p className="text-sm font-semibold text-slate-500">Presencia</p>
 
           <div className="mt-4 flex items-center gap-3">
             <span

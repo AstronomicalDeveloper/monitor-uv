@@ -14,7 +14,7 @@ function GlassPanel({
   description,
   action,
   className = ''
-}: GlassPanelProps) {
+}: GlassPanelProps): React.JSX.Element {
   return (
     <section
       className={[
@@ -26,17 +26,9 @@ function GlassPanel({
       {(title || description || action) && (
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            {title && (
-              <h2 className="text-xl font-bold text-slate-800">
-                {title}
-              </h2>
-            )}
+            {title && <h2 className="text-xl font-bold text-slate-800">{title}</h2>}
 
-            {description && (
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                {description}
-              </p>
-            )}
+            {description && <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>}
           </div>
 
           {action && <div>{action}</div>}

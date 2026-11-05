@@ -13,7 +13,7 @@ function formatNumber(value: number | null, decimals = 2): string {
   return value.toFixed(decimals)
 }
 
-function HistoryDetailPage() {
+function HistoryDetailPage(): React.JSX.Element {
   const { sessionId } = useParams()
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,13 +73,9 @@ function HistoryDetailPage() {
           Historial
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-slate-800">
-          {session.name}
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold text-slate-800">{session.name}</h1>
 
-        <p className="mt-2 text-slate-500">
-          {session.location || 'Sin lugar especificado'}
-        </p>
+        <p className="mt-2 text-slate-500">{session.location || 'Sin lugar especificado'}</p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -89,11 +85,15 @@ function HistoryDetailPage() {
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">UV máximo</p>
-          <p className="mt-2 text-3xl font-bold text-violet-700">{formatNumber(stats.uvMax, 3)} V</p>
+          <p className="mt-2 text-3xl font-bold text-violet-700">
+            {formatNumber(stats.uvMax, 3)} V
+          </p>
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">Temp. promedio</p>
-          <p className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(stats.temperatureAvg)} °C</p>
+          <p className="mt-2 text-3xl font-bold text-slate-800">
+            {formatNumber(stats.temperatureAvg)} °C
+          </p>
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">Presencia</p>

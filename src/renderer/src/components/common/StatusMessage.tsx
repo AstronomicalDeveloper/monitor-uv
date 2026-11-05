@@ -31,28 +31,18 @@ function StatusMessage({
   status = 'idle',
   title,
   description
-}: StatusMessageProps) {
+}: StatusMessageProps): React.JSX.Element {
   const currentStyle = styles[status] ?? styles.idle
 
   return (
-    <div
-      className={`rounded-2xl border p-4 ${currentStyle.container}`}
-    >
+    <div className={`rounded-2xl border p-4 ${currentStyle.container}`}>
       <div className="flex items-start gap-3">
-        <span
-          className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${currentStyle.dot}`}
-        />
+        <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${currentStyle.dot}`} />
 
         <div>
-          <p className={`font-semibold ${currentStyle.text}`}>
-            {title}
-          </p>
+          <p className={`font-semibold ${currentStyle.text}`}>{title}</p>
 
-          {description && (
-            <p className="mt-1 text-sm text-slate-500">
-              {description}
-            </p>
-          )}
+          {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
         </div>
       </div>
     </div>

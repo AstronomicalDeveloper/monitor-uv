@@ -16,7 +16,7 @@ function GlassModal({
   children,
   footer,
   onClose
-}: GlassModalProps) {
+}: GlassModalProps): React.JSX.Element | null {
   if (!open) {
     return null
   }
@@ -32,24 +32,14 @@ function GlassModal({
 
       <section className="relative z-10 w-full max-w-lg rounded-4xl border border-white/80 bg-white/75 p-7 shadow-2xl shadow-violet-300/30 backdrop-blur-3xl">
         <header>
-          <h2 className="text-2xl font-bold text-slate-800">
-            {title}
-          </h2>
+          <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
 
-          {description && (
-            <p className="mt-2 leading-6 text-slate-500">
-              {description}
-            </p>
-          )}
+          {description && <p className="mt-2 leading-6 text-slate-500">{description}</p>}
         </header>
 
         <div className="mt-6">{children}</div>
 
-        {footer && (
-          <footer className="mt-7 flex justify-end gap-3">
-            {footer}
-          </footer>
-        )}
+        {footer && <footer className="mt-7 flex justify-end gap-3">{footer}</footer>}
       </section>
     </div>
   )

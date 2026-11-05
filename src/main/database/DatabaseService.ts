@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import { databaseConfig } from './databaseConfig'
+import { loadDatabaseConfig } from './databaseConfig'
 
 type CaptureMode = 'manual' | 'timed'
 
@@ -42,8 +42,7 @@ function toSqlDateTime(value: string | null | undefined): string | null {
     return null
   }
 
-  const pad = (number: number, size = 2): string =>
-    number.toString().padStart(size, '0')
+  const pad = (number: number, size = 2): string => number.toString().padStart(size, '0')
 
   return [
     date.getFullYear(),
@@ -79,20 +78,59 @@ function normalizeStatus(status: string): 'active' | 'finished' | 'cancelled' {
 }
 
 function numberOrNull(value: unknown): number | null {
-  if (value === null || value === undefined) {
+  if (
+    (typeof value !== 'number' && typeof value !== 'string') ||
+    (typeof value === 'string' && !value.trim())
+  ) {
     return null
   }
 
   const number = Number(value)
-  return Number.isNaN(number) ? null : number
+  return !Number.isFinite(number) ? null : number
 }
 
-class DatabaseService {
+export class DatabaseService {
   private pool: mysql.Pool | null = null
+  private writes: Promise<unknown> = Promise.resolve()
+  private closing = false
+  private openSessions = new Set<number>()
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.closing) return Promise.reject(new Error('La aplicacion se esta cerrando.'))
+    const pending = this.writes.then(operation)
+    this.writes = pending.catch(() => undefined)
+    return pending
+  }
+
+  createSession(request: CreateSessionRequest): Promise<number> {
+    return this.enqueue(() => this.insertSession(request))
+  }
+
+  saveMeasurement(request: SaveMeasurementRequest): Promise<number> {
+    return this.enqueue(() => this.insertMeasurement(request))
+  }
+
+  finishSession(sessionId: number, finishedAt: string): Promise<void> {
+    return this.enqueue(() => this.updateSession(sessionId, finishedAt, 'FINALIZADA'))
+  }
+
+  cancelSession(sessionId: number, finishedAt: string): Promise<void> {
+    return this.enqueue(() => this.updateSession(sessionId, finishedAt, 'CANCELADA'))
+  }
+
+  finishOpenSessions(): Promise<void> {
+    return this.enqueue(() => this.finalizeOpenSessions())
+  }
+
+  private async finalizeOpenSessions(): Promise<void> {
+    for (const id of this.openSessions) {
+      await this.updateSession(id, new Date().toISOString(), 'FINALIZADA')
+    }
+  }
 
   private getPool(): mysql.Pool {
     if (!this.pool) {
-      this.pool = mysql.createPool(databaseConfig)
+      this.pool = mysql.createPool(loadDatabaseConfig())
     }
 
     return this.pool
@@ -105,7 +143,7 @@ class DatabaseService {
     return Array.isArray(rows)
   }
 
-  async createSession(request: CreateSessionRequest): Promise<number> {
+  private async insertSession(request: CreateSessionRequest): Promise<number> {
     const pool = this.getPool()
 
     const [result] = await pool.execute<mysql.ResultSetHeader>(
@@ -130,15 +168,24 @@ class DatabaseService {
       ]
     )
 
+    this.openSessions.add(result.insertId)
     return result.insertId
   }
 
-  async saveMeasurement(request: SaveMeasurementRequest): Promise<number> {
+  private async insertMeasurement(request: SaveMeasurementRequest): Promise<number> {
     const pool = this.getPool()
     const { sessionId, measurement } = request
 
-    const [result] = await pool.execute<mysql.ResultSetHeader>(
-      `INSERT INTO medicion_ambiental (
+    const connection = await pool.getConnection()
+    try {
+      await connection.beginTransaction()
+      const [sessions] = await connection.execute<mysql.RowDataPacket[]>(
+        'SELECT estado FROM sesion_medicion WHERE sesion_id = ? FOR UPDATE',
+        [sessionId]
+      )
+      if (sessions[0]?.estado !== 'ACTIVA') throw new Error('La sesion no esta activa.')
+      const [result] = await connection.execute<mysql.ResultSetHeader>(
+        `INSERT INTO medicion_ambiental (
         sesion_id,
         fecha_hora_prototipo,
         fecha_hora_recepcion,
@@ -151,51 +198,49 @@ class DatabaseService {
         presion_hpa,
         presencia_detectada
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        sessionId,
-        measurement.dateTime,
-        toSqlDateTime(measurement.receivedAt) ?? toSqlDateTime(new Date().toISOString()),
-        measurement.uvAdc,
-        measurement.uvVoltage,
-        measurement.level,
-        measurement.luminosity,
-        measurement.temperature,
-        measurement.humidity,
-        measurement.pressure,
-        measurement.presence === null ? null : measurement.presence ? 1 : 0
-      ]
-    )
+        [
+          sessionId,
+          measurement.dateTime,
+          toSqlDateTime(measurement.receivedAt) ?? toSqlDateTime(new Date().toISOString()),
+          measurement.uvAdc,
+          measurement.uvVoltage,
+          measurement.level,
+          measurement.luminosity,
+          measurement.temperature,
+          measurement.humidity,
+          measurement.pressure,
+          measurement.presence === null ? null : measurement.presence ? 1 : 0
+        ]
+      )
 
-    await pool.execute(
-      `UPDATE sesion_medicion
+      await connection.execute(
+        `UPDATE sesion_medicion
        SET total_muestras = total_muestras + 1
        WHERE sesion_id = ?`,
-      [sessionId]
-    )
+        [sessionId]
+      )
 
-    return result.insertId
+      await connection.commit()
+      return result.insertId
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
   }
 
-  async finishSession(sessionId: number, finishedAt: string): Promise<void> {
-    const pool = this.getPool()
-
-    await pool.execute(
-      `UPDATE sesion_medicion
-       SET estado = 'FINALIZADA', fecha_fin = ?
-       WHERE sesion_id = ?`,
-      [toSqlDateTime(finishedAt), sessionId]
+  private async updateSession(
+    sessionId: number,
+    finishedAt: string,
+    status: 'FINALIZADA' | 'CANCELADA'
+  ): Promise<void> {
+    await this.getPool().execute(
+      `UPDATE sesion_medicion SET estado = ?, fecha_fin = ?
+       WHERE sesion_id = ? AND estado = 'ACTIVA'`,
+      [status, toSqlDateTime(finishedAt), sessionId]
     )
-  }
-
-  async cancelSession(sessionId: number, finishedAt: string): Promise<void> {
-    const pool = this.getPool()
-
-    await pool.execute(
-      `UPDATE sesion_medicion
-       SET estado = 'CANCELADA', fecha_fin = ?
-       WHERE sesion_id = ?`,
-      [toSqlDateTime(finishedAt), sessionId]
-    )
+    this.openSessions.delete(sessionId)
   }
 
   async listSessions(): Promise<unknown[]> {
@@ -297,17 +342,13 @@ class DatabaseService {
       humidity: numberOrNull(row.humidity),
       pressure: numberOrNull(row.pressure),
       presence:
-        row.presence === null || row.presence === undefined
-          ? null
-          : Boolean(row.presence)
+        row.presence === null || row.presence === undefined ? null : Number(row.presence) === 1
     }))
   }
 
   async getReport(sessionIds: number[]): Promise<unknown> {
     const allSessions = (await this.listSessions()) as Record<string, unknown>[]
-    const sessions = allSessions.filter((session) =>
-      sessionIds.includes(Number(session.sessionId))
-    )
+    const sessions = allSessions.filter((session) => sessionIds.includes(Number(session.sessionId)))
 
     if (sessions.length === 0) {
       throw new Error('Selecciona al menos una sesión válida.')
@@ -331,24 +372,20 @@ class DatabaseService {
         .filter((value): value is number => value !== null)
 
     const min = (numbers: number[]): number | null =>
-      numbers.length ? Math.min(...numbers) : null
+      numbers.length ? numbers.reduce((result, value) => Math.min(result, value), Infinity) : null
 
     const max = (numbers: number[]): number | null =>
-      numbers.length ? Math.max(...numbers) : null
+      numbers.length ? numbers.reduce((result, value) => Math.max(result, value), -Infinity) : null
 
     const avg = (numbers: number[]): number | null =>
-      numbers.length
-        ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length
-        : null
+      numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null
 
     const uvValues = values('uvVoltage')
     const tempValues = values('temperature')
     const humidityValues = values('humidity')
     const pressureValues = values('pressure')
     const luminosityValues = values('luminosity')
-    const presenceCount = measurements.filter(
-      (measurement) => measurement.presence === true
-    ).length
+    const presenceCount = measurements.filter((measurement) => measurement.presence === true).length
 
     return {
       samples: measurements.length,
@@ -372,12 +409,14 @@ class DatabaseService {
   }
 
   async close(): Promise<void> {
-    if (!this.pool) {
-      return
+    this.closing = true
+    await this.writes
+    try {
+      await this.finalizeOpenSessions()
+    } finally {
+      await this.pool?.end()
+      this.pool = null
     }
-
-    await this.pool.end()
-    this.pool = null
   }
 }
 

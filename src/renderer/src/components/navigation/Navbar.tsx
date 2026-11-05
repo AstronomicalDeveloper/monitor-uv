@@ -2,12 +2,8 @@ import NavItem from './NavItem'
 import ConnectionIndicator from './ConnectionIndicator'
 import { useApp } from '../../context/AppContext'
 
-function Navbar() {
-  const {
-    connected,
-    connectedPort,
-    capturing
-  } = useApp()
+function Navbar(): React.JSX.Element {
+  const { connected, connectedPort, capturing } = useApp()
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 px-6 pt-5">
@@ -18,13 +14,9 @@ function Navbar() {
           </div>
 
           <div>
-            <p className="font-bold text-slate-800">
-              Monitor UV
-            </p>
+            <p className="font-bold text-slate-800">Monitor UV</p>
 
-            <p className="text-xs text-slate-500">
-              Monitoreo ambiental
-            </p>
+            <p className="text-xs text-slate-500">Monitoreo ambiental</p>
           </div>
         </div>
 
@@ -32,33 +24,20 @@ function Navbar() {
           <NavItem to="/monitoreo">
             <span className="flex items-center gap-2">
               Monitoreo
-
-              {capturing && (
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-              )}
+              {capturing && <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />}
             </span>
           </NavItem>
 
-          <NavItem
-            to="/captura/nueva"
-            disabled={!connected || capturing}
-          >
+          <NavItem to="/captura/nueva" disabled={!connected || capturing}>
             Nueva captura
           </NavItem>
 
-          <NavItem to="/historial">
-            Historial
-          </NavItem>
+          <NavItem to="/historial">Historial</NavItem>
 
-          <NavItem to="/reportes">
-            Reportes
-          </NavItem>
+          <NavItem to="/reportes">Reportes</NavItem>
         </div>
 
-        <ConnectionIndicator
-          connected={connected}
-          portName={connectedPort}
-        />
+        <ConnectionIndicator connected={connected} portName={connectedPort} />
       </nav>
     </header>
   )

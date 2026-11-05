@@ -1,113 +1,90 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useEffectEvent, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
 import Select from '../components/common/Select'
 import StatusMessage from '../components/common/StatusMessage'
 import { useApp } from '../context/AppContext'
 import type { SerialPortInfo } from '../types/serial'
 
-function ConnectionPage() {
+function ConnectionPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { registerConnection } = useApp()
 
-  const [selectedPort, setSelectedPort] =
-    useState<string>('')
+  const [selectedPort, setSelectedPort] = useState<string>('')
 
-  const [testedPort, setTestedPort] =
-    useState<string>('')
+  const [testedPort, setTestedPort] = useState<string>('')
 
-  const [availablePorts, setAvailablePorts] =
-    useState<SerialPortInfo[]>([])
+  const [availablePorts, setAvailablePorts] = useState<SerialPortInfo[]>([])
 
-  const [connectionStatus, setConnectionStatus] =
-    useState<'idle' | 'testing' | 'success' | 'error'>(
-      'idle'
-    )
+  const [connectionStatus, setConnectionStatus] = useState<
+    'idle' | 'testing' | 'success' | 'error'
+  >('idle')
 
-  const [isLoadingPorts, setIsLoadingPorts] =
-    useState<boolean>(false)
+  const [isLoadingPorts, setIsLoadingPorts] = useState<boolean>(true)
 
-  const [isConnecting, setIsConnecting] =
-    useState<boolean>(false)
+  const [isConnecting, setIsConnecting] = useState<boolean>(false)
 
-  const [portError, setPortError] =
-    useState<string>('')
+  const [portError, setPortError] = useState<string>('')
 
-  const [receivedLine, setReceivedLine] =
-    useState<string>('')
+  const [receivedLine, setReceivedLine] = useState<string>('')
 
   const baudRate = 9600
 
   const statusContent = {
     idle: {
       title: 'Esperando conexión',
-      description:
-        'Actualiza la lista y selecciona el puerto donde está conectado el prototipo.'
+      description: 'Actualiza la lista y selecciona el puerto donde está conectado el prototipo.'
     },
     testing: {
       title: 'Probando comunicación',
-      description:
-        'La aplicación está esperando una respuesta real del prototipo.'
+      description: 'La aplicación está esperando una respuesta real del prototipo.'
     },
     success: {
       title: 'Conexión verificada',
-      description:
-        'El prototipo está enviando información correctamente.'
+      description: 'El prototipo está enviando información correctamente.'
     },
     error: {
       title: 'No se pudo establecer la conexión',
-      description:
-        'Comprueba el cable USB, el puerto seleccionado y vuelve a intentarlo.'
+      description: 'Comprueba el cable USB, el puerto seleccionado y vuelve a intentarlo.'
     }
   }
 
-  async function handleRefreshPorts() {
-    setIsLoadingPorts(true)
-    setPortError('')
-
-    try {
-      const result = await window.api.serial.listPorts()
-
-      if (!result.success) {
+  function handleRefreshPorts(): Promise<void> {
+    return window.api.serial
+      .listPorts()
+      .then((result) => {
+        if (!result.success) {
+          setAvailablePorts([])
+          setSelectedPort('')
+          setTestedPort('')
+          setReceivedLine('')
+          setConnectionStatus('error')
+          setPortError(result.message || 'No se pudo completar la operacion.')
+          return
+        }
+        setPortError('')
+        setAvailablePorts(result.data ?? [])
+        if (!(result.data ?? []).some((port) => port.path === selectedPort)) {
+          setSelectedPort('')
+          setTestedPort('')
+          setReceivedLine('')
+        }
+        setConnectionStatus('idle')
+      })
+      .catch(() => {
         setAvailablePorts([])
         setSelectedPort('')
         setTestedPort('')
         setReceivedLine('')
         setConnectionStatus('error')
-        setPortError(result.message || 'No se pudo completar la operación.')
-        return
-      }
-
-      setAvailablePorts(result.data ?? [])
-
-      const selectedPortStillExists = (result.data ?? []).some(
-        (port) => port.path === selectedPort
-      )
-
-      if (!selectedPortStillExists) {
-        setSelectedPort('')
-        setTestedPort('')
-        setReceivedLine('')
-      }
-
-      setConnectionStatus('idle')
-    } catch (error) {
-      console.error('Error al solicitar los puertos:', error)
-
-      setAvailablePorts([])
-      setSelectedPort('')
-      setTestedPort('')
-      setReceivedLine('')
-      setConnectionStatus('error')
-      setPortError(
-        'No fue posible comunicarse con el proceso principal.'
-      )
-    } finally {
-      setIsLoadingPorts(false)
-    }
+        setPortError('No fue posible comunicarse con el proceso principal.')
+      })
+      .finally(() => {
+        setIsLoadingPorts(false)
+      })
   }
 
-  async function handleTestConnection() {
+  async function handleTestConnection(): Promise<void> {
     if (!selectedPort) {
       return
     }
@@ -133,23 +110,15 @@ function ConnectionPage() {
       setTestedPort(selectedPort)
       setConnectionStatus('success')
     } catch (error) {
-      console.error(
-        'Error durante la prueba serial:',
-        error
-      )
+      console.error('Error durante la prueba serial:', error)
 
       setConnectionStatus('error')
-      setPortError(
-        'No fue posible ejecutar la prueba de conexión.'
-      )
+      setPortError('No fue posible ejecutar la prueba de conexión.')
     }
   }
 
-  async function handleConnect() {
-    if (
-      connectionStatus !== 'success' ||
-      testedPort !== selectedPort
-    ) {
+  async function handleConnect(): Promise<void> {
+    if (connectionStatus !== 'success' || testedPort !== selectedPort) {
       return
     }
 
@@ -171,22 +140,18 @@ function ConnectionPage() {
       registerConnection(result.data?.path ?? selectedPort)
       navigate('/monitoreo')
     } catch (error) {
-      console.error(
-        'Error al conectar el dispositivo:',
-        error
-      )
+      console.error('Error al conectar el dispositivo:', error)
 
       setConnectionStatus('error')
-      setPortError(
-        'No fue posible mantener abierta la conexión.'
-      )
+      setPortError('No fue posible mantener abierta la conexión.')
     } finally {
       setIsConnecting(false)
     }
   }
 
+  const refreshOnMount = useEffectEvent(handleRefreshPorts)
   useEffect(() => {
-    handleRefreshPorts()
+    void refreshOnMount()
   }, [])
 
   const currentStatus = statusContent[connectionStatus]
@@ -206,9 +171,7 @@ function ConnectionPage() {
               UV
             </div>
 
-            <p className="mt-5 font-semibold text-slate-700">
-              Monitor Ambiental UV
-            </p>
+            <p className="mt-5 font-semibold text-slate-700">Monitor Ambiental UV</p>
           </div>
 
           <div className="max-w-xl">
@@ -221,9 +184,8 @@ function ConnectionPage() {
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">
-              La aplicación recibirá directamente las mediciones de
-              radiación ultravioleta y las variables ambientales enviadas
-              por el prototipo.
+              La aplicación recibirá directamente las mediciones de radiación ultravioleta y las
+              variables ambientales enviadas por el prototipo.
             </p>
           </div>
 
@@ -244,13 +206,11 @@ function ConnectionPage() {
               Configuración serial
             </p>
 
-            <h2 className="mt-3 text-3xl font-bold">
-              Conexión del dispositivo
-            </h2>
+            <h2 className="mt-3 text-3xl font-bold">Conexión del dispositivo</h2>
 
             <p className="mt-3 leading-7 text-slate-600">
-              Selecciona el puerto donde se encuentra conectado el
-              prototipo y verifica la comunicación antes de continuar.
+              Selecciona el puerto donde se encuentra conectado el prototipo y verifica la
+              comunicación antes de continuar.
             </p>
 
             <div className="mt-8 space-y-5">
@@ -275,40 +235,29 @@ function ConnectionPage() {
                   </option>
 
                   {availablePorts.map((port) => (
-                    <option
-                      key={port.path}
-                      value={port.path}
-                    >
-                      {port.manufacturer
-                        ? `${port.path} — ${port.manufacturer}`
-                        : port.path}
+                    <option key={port.path} value={port.path}>
+                      {port.manufacturer ? `${port.path} — ${port.manufacturer}` : port.path}
                     </option>
                   ))}
                 </Select>
 
                 <Button
                   variant="secondary"
-                  onClick={handleRefreshPorts}
+                  onClick={() => {
+                    setIsLoadingPorts(true)
+                    setPortError('')
+                    void handleRefreshPorts()
+                  }}
                   disabled={isLoadingPorts || isConnecting}
-                  className="h-[50px] px-4"
+                  className="h-12.5 px-4"
                 >
-                  {isLoadingPorts
-                    ? 'Buscando...'
-                    : 'Actualizar'}
+                  {isLoadingPorts ? 'Buscando...' : 'Actualizar'}
                 </Button>
               </div>
 
               <StatusMessage
-                status={
-                  isLoadingPorts
-                    ? 'testing'
-                    : connectionStatus
-                }
-                title={
-                  isLoadingPorts
-                    ? 'Buscando puertos seriales'
-                    : currentStatus.title
-                }
+                status={isLoadingPorts ? 'testing' : connectionStatus}
+                title={isLoadingPorts ? 'Buscando puertos seriales' : currentStatus.title}
                 description={
                   portError ||
                   (isLoadingPorts
@@ -332,38 +281,33 @@ function ConnectionPage() {
               <Button
                 variant="secondary"
                 disabled={
-                  !selectedPort ||
-                  connectionStatus === 'testing' ||
-                  isConnecting ||
-                  isLoadingPorts
+                  !selectedPort || connectionStatus === 'testing' || isConnecting || isLoadingPorts
                 }
                 onClick={handleTestConnection}
                 className="w-full"
               >
-                {connectionStatus === 'testing'
-                  ? 'Esperando datos...'
-                  : 'Probar conexión'}
+                {connectionStatus === 'testing' ? 'Esperando datos...' : 'Probar conexión'}
               </Button>
 
               <Button
                 disabled={
-                  connectionStatus !== 'success' ||
-                  testedPort !== selectedPort ||
-                  isConnecting
+                  connectionStatus !== 'success' || testedPort !== selectedPort || isConnecting
                 }
                 onClick={handleConnect}
                 className="w-full"
               >
-                {isConnecting
-                  ? 'Conectando...'
-                  : 'Conectar y continuar'}
+                {isConnecting ? 'Conectando...' : 'Conectar y continuar'}
               </Button>
             </div>
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-              La aplicación comprobará que el prototipo envíe datos antes
-              de establecer la conexión permanente.
+              La aplicación comprobará que el prototipo envíe datos antes de establecer la conexión
+              permanente.
             </p>
+
+            <Link to="/monitoreo" className="text-blue-500 hover:text-blue-700">
+              Ir a monitoreo
+            </Link>
           </div>
         </section>
       </main>

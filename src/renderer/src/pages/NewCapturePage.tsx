@@ -7,16 +7,10 @@ import GlassPanel from '../components/glass/GlassPanel'
 import { useApp } from '../context/AppContext'
 import type { CaptureMode } from '../types/database'
 
-function NewCapturePage() {
+function NewCapturePage(): React.JSX.Element {
   const navigate = useNavigate()
 
-  const {
-    connected,
-    connectedPort,
-    capturing,
-    databaseError,
-    startCapture
-  } = useApp()
+  const { connected, connectedPort, capturing, databaseError, startCapture } = useApp()
 
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
@@ -89,9 +83,7 @@ function NewCapturePage() {
             Sesiones
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Nueva captura
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Nueva captura</h1>
         </header>
 
         <GlassPanel>
@@ -104,10 +96,7 @@ function NewCapturePage() {
               Primero debes conectar el prototipo mediante el puerto serial.
             </p>
 
-            <Button
-              onClick={() => navigate('/conexion')}
-              className="mt-6"
-            >
+            <Button onClick={() => navigate('/conexion')} className="mt-6">
               Ir a conexión
             </Button>
           </div>
@@ -124,25 +113,18 @@ function NewCapturePage() {
             Sesiones
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Nueva captura
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Nueva captura</h1>
         </header>
 
         <GlassPanel>
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-slate-800">
-              Ya existe una captura activa
-            </h2>
+            <h2 className="text-xl font-semibold text-slate-800">Ya existe una captura activa</h2>
 
             <p className="mt-2 text-slate-500">
               Finaliza la sesión actual antes de crear una nueva.
             </p>
 
-            <Button
-              onClick={() => navigate('/monitoreo')}
-              className="mt-6"
-            >
+            <Button onClick={() => navigate('/monitoreo')} className="mt-6">
               Ir al monitoreo
             </Button>
           </div>
@@ -159,9 +141,7 @@ function NewCapturePage() {
             Sesiones
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Nueva captura
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Nueva captura</h1>
 
           <p className="mt-2 text-slate-500">
             Configura la sesión que guardará las mediciones reales del prototipo.
@@ -173,9 +153,7 @@ function NewCapturePage() {
             Puerto conectado
           </p>
 
-          <p className="mt-1 font-bold text-emerald-700">
-            {connectedPort}
-          </p>
+          <p className="mt-1 font-bold text-emerald-700">{connectedPort}</p>
         </GlassCard>
       </header>
 
@@ -206,9 +184,7 @@ function NewCapturePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Lugar
-              </label>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Lugar</label>
 
               <input
                 value={location}
@@ -271,9 +247,7 @@ function NewCapturePage() {
 
             {mode === 'timed' && (
               <div>
-                <p className="mb-2 text-sm font-semibold text-slate-700">
-                  Duración
-                </p>
+                <p className="mb-2 text-sm font-semibold text-slate-700">Duración</p>
 
                 <div className="grid grid-cols-3 gap-3">
                   <input
@@ -340,10 +314,7 @@ function NewCapturePage() {
         title="Resumen previo"
         description="La sesión se creará en MariaDB al iniciar la captura."
         action={
-          <Button
-            onClick={handleStartCapture}
-            disabled={starting}
-          >
+          <Button onClick={handleStartCapture} disabled={starting}>
             {starting ? 'Iniciando...' : 'Iniciar captura'}
           </Button>
         }
@@ -355,17 +326,27 @@ function NewCapturePage() {
           </GlassCard>
 
           <GlassCard padding="p-4" solid>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Modalidad</p>
-            <p className="mt-2 font-bold text-slate-800">{mode === 'timed' ? 'Temporizada' : 'Manual'}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Modalidad
+            </p>
+            <p className="mt-2 font-bold text-slate-800">
+              {mode === 'timed' ? 'Temporizada' : 'Manual'}
+            </p>
           </GlassCard>
 
           <GlassCard padding="p-4" solid>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Duración</p>
-            <p className="mt-2 font-bold text-slate-800">{mode === 'timed' ? `${durationSeconds} s` : 'Hasta finalizar'}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Duración
+            </p>
+            <p className="mt-2 font-bold text-slate-800">
+              {mode === 'timed' ? `${durationSeconds} s` : 'Hasta finalizar'}
+            </p>
           </GlassCard>
 
           <GlassCard padding="p-4" solid>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Almacenamiento</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Almacenamiento
+            </p>
             <p className="mt-2 font-bold text-slate-800">Cada {storageIntervalSeconds} s</p>
           </GlassCard>
         </div>

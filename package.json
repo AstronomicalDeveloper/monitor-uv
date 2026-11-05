@@ -1,13 +1,13 @@
 {
   "name": "monitor-uv",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Monitor Ambiental UV: captura serial, sesiones y reportes ambientales",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "Landry Bardales Guadalupe",
+  "homepage": "https://github.com/AstronomicalDeveloper/monitor-uv",
   "scripts": {
     "format": "prettier --write .",
-    "lint": "eslint --cache .",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -18,7 +18,10 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "test": "node --test tests/*.test.cjs",
+    "test:electron": "electron tests/electron-smoke.cjs",
+    "test:package": "node tests/verify-package.cjs"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -37,7 +40,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "electron": "^39.2.6",
+    "electron": "^45.2.3",
     "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.1",
@@ -49,5 +52,9 @@
     "react-dom": "^19.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AstronomicalDeveloper/monitor-uv.git"
   }
 }

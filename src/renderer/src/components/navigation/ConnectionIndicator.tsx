@@ -8,7 +8,7 @@ interface ConnectionIndicatorProps {
 function ConnectionIndicator({
   connected = false,
   portName = null
-}: ConnectionIndicatorProps) {
+}: ConnectionIndicatorProps): React.JSX.Element {
   return (
     <Link
       to="/conexion"
@@ -16,9 +16,7 @@ function ConnectionIndicator({
     >
       <span
         className={`h-2.5 w-2.5 rounded-full ${
-          connected
-            ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.7)]'
-            : 'bg-slate-400'
+          connected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.7)]' : 'bg-slate-400'
         }`}
       />
 
@@ -27,11 +25,7 @@ function ConnectionIndicator({
           {connected ? 'Dispositivo conectado' : 'Sin conexión'}
         </span>
 
-        {connected && portName && (
-          <span className="text-xs text-slate-500">
-            {portName}
-          </span>
-        )}
+        {connected && portName && <span className="text-xs text-slate-500">{portName}</span>}
       </div>
     </Link>
   )

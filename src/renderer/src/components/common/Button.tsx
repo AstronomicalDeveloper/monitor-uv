@@ -1,10 +1,6 @@
-import type {
-  ButtonHTMLAttributes,
-  ReactNode
-} from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
-interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
   variant?: 'primary' | 'secondary' | 'danger'
 }
@@ -15,14 +11,11 @@ function Button({
   variant = 'primary',
   className = '',
   ...props
-}: ButtonProps) {
+}: ButtonProps): React.JSX.Element {
   const variants = {
-    primary:
-      'bg-gradient-to-r from-emerald-400 to-violet-500 text-white shadow-lg',
-    secondary:
-      'border border-white/70 bg-white/55 text-slate-700',
-    danger:
-      'bg-rose-400 text-white'
+    primary: 'bg-gradient-to-r from-emerald-400 to-violet-500 text-white shadow-lg',
+    secondary: 'border border-white/70 bg-white/55 text-slate-700',
+    danger: 'bg-rose-400 text-white'
   }
 
   return (

@@ -15,7 +15,7 @@ function formatNumber(value: number | null, decimals = 2): string {
   return value.toFixed(decimals)
 }
 
-function ReportDetailPage() {
+function ReportDetailPage(): React.JSX.Element {
   const { reportId } = useParams()
   const [report, setReport] = useState<ReportSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -70,14 +70,13 @@ function ReportDetailPage() {
     setExporting(type)
 
     try {
-      const result = type === 'csv'
-        ? await window.api.database.exportReportCsv(sessionIds)
-        : await window.api.database.exportReportPdf(sessionIds)
+      const result =
+        type === 'csv'
+          ? await window.api.database.exportReportCsv(sessionIds)
+          : await window.api.database.exportReportPdf(sessionIds)
 
       if (!result.success || !result.data) {
-        setExportMessage(
-          result.message || 'No se pudo exportar el reporte.'
-        )
+        setExportMessage(result.message || 'No se pudo exportar el reporte.')
         return
       }
 
@@ -117,9 +116,7 @@ function ReportDetailPage() {
   }
 
   const { sessions, stats, measurements } = report
-  const sessionsWithObservations = sessions.filter(
-    (session) => session.description?.trim()
-  )
+  const sessionsWithObservations = sessions.filter((session) => session.description?.trim())
 
   return (
     <section className="space-y-6">
@@ -129,9 +126,7 @@ function ReportDetailPage() {
             Reportes
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Reporte agrupado
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Reporte agrupado</h1>
 
           <p className="mt-2 text-slate-500">
             {sessions.length} sesión(es) incluidas en el análisis.
@@ -139,10 +134,7 @@ function ReportDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => setShowObservations(true)}
-          >
+          <Button variant="secondary" onClick={() => setShowObservations(true)}>
             Ver observaciones
           </Button>
 
@@ -154,10 +146,7 @@ function ReportDetailPage() {
             {exporting === 'csv' ? 'Generando CSV...' : 'Exportar CSV'}
           </Button>
 
-          <Button
-            disabled={exporting !== null}
-            onClick={() => handleExport('pdf')}
-          >
+          <Button disabled={exporting !== null} onClick={() => handleExport('pdf')}>
             {exporting === 'pdf' ? 'Generando PDF...' : 'Exportar PDF'}
           </Button>
         </div>
@@ -176,7 +165,9 @@ function ReportDetailPage() {
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">UV máximo</p>
-          <p className="mt-2 text-3xl font-bold text-violet-700">{formatNumber(stats.uvMax, 3)} V</p>
+          <p className="mt-2 text-3xl font-bold text-violet-700">
+            {formatNumber(stats.uvMax, 3)} V
+          </p>
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">UV promedio</p>
@@ -184,11 +175,15 @@ function ReportDetailPage() {
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">Temp. prom.</p>
-          <p className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(stats.temperatureAvg)} °C</p>
+          <p className="mt-2 text-3xl font-bold text-slate-800">
+            {formatNumber(stats.temperatureAvg)} °C
+          </p>
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">Luz prom.</p>
-          <p className="mt-2 text-3xl font-bold text-slate-800">{formatNumber(stats.luminosityAvg)} lux</p>
+          <p className="mt-2 text-3xl font-bold text-slate-800">
+            {formatNumber(stats.luminosityAvg)} lux
+          </p>
         </GlassCard>
         <GlassCard solid>
           <p className="text-sm text-slate-500">Presencia</p>
@@ -243,10 +238,7 @@ function ReportDetailPage() {
       </GlassPanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <GlassPanel
-          title="Temperatura"
-          description="Tiempo vs temperatura ambiental."
-        >
+        <GlassPanel title="Temperatura" description="Tiempo vs temperatura ambiental.">
           <SimpleLineChart
             unit="°C"
             xLabel="Tiempo"
@@ -258,10 +250,7 @@ function ReportDetailPage() {
           />
         </GlassPanel>
 
-        <GlassPanel
-          title="Humedad"
-          description="Tiempo vs humedad relativa."
-        >
+        <GlassPanel title="Humedad" description="Tiempo vs humedad relativa.">
           <SimpleLineChart
             unit="%"
             xLabel="Tiempo"
@@ -288,10 +277,7 @@ function ReportDetailPage() {
           />
         </GlassPanel>
 
-        <GlassPanel
-          title="Presión atmosférica"
-          description="Tiempo vs presión atmosférica."
-        >
+        <GlassPanel title="Presión atmosférica" description="Tiempo vs presión atmosférica.">
           <SimpleLineChart
             unit="hPa"
             xLabel="Tiempo"
@@ -309,11 +295,7 @@ function ReportDetailPage() {
         title="Observaciones de las sesiones"
         description="Estas observaciones también se incluyen en el PDF exportado."
         onClose={() => setShowObservations(false)}
-        footer={
-          <Button onClick={() => setShowObservations(false)}>
-            Cerrar
-          </Button>
-        }
+        footer={<Button onClick={() => setShowObservations(false)}>Cerrar</Button>}
       >
         {sessionsWithObservations.length === 0 ? (
           <p className="text-slate-500">
@@ -326,13 +308,9 @@ function ReportDetailPage() {
                 key={session.sessionId}
                 className="rounded-2xl border border-white/70 bg-white/55 p-4"
               >
-                <p className="font-semibold text-slate-800">
-                  {session.name}
-                </p>
+                <p className="font-semibold text-slate-800">{session.name}</p>
 
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {session.description}
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{session.description}</p>
               </article>
             ))}
           </div>

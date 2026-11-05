@@ -1,7 +1,4 @@
-import type {
-  ChangeEventHandler,
-  ReactNode
-} from 'react'
+import type { ChangeEventHandler, ReactNode } from 'react'
 
 interface SelectProps {
   id: string
@@ -19,13 +16,10 @@ function Select({
   onChange,
   disabled = false,
   children
-}: SelectProps) {
+}: SelectProps): React.JSX.Element {
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="mb-2 block text-sm font-semibold text-slate-700"
-      >
+      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
 

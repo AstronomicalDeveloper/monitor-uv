@@ -16,11 +16,39 @@ export interface ParsedMeasurement {
 
 type PartialMeasurement = Partial<ParsedMeasurement>
 
-class SerialService extends EventEmitter {
+export class SerialService extends EventEmitter {
   private port: SerialPort | null = null
-  private parser: ReadlineParser | null = null
   private connectedPortPath: string | null = null
   private currentMeasurement: PartialMeasurement = {}
+  private frameStartedAt = 0
+  private operations: Promise<unknown> = Promise.resolve()
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.operations.then(operation)
+    this.operations = pending.catch(() => undefined)
+    return pending
+  }
+
+  testConnection(
+    path: string,
+    baudRate = 9600
+  ): Promise<{ path: string; baudRate: number; firstLine: string }> {
+    return this.enqueue(() => {
+      if (this.port?.isOpen) throw new Error('Desconecta el dispositivo antes de probar el puerto.')
+      return this.testPort(path, baudRate)
+    })
+  }
+
+  connect(
+    path: string,
+    baudRate = 9600
+  ): Promise<{ path: string; baudRate: number; alreadyConnected: boolean }> {
+    return this.enqueue(() => this.connectPort(path, baudRate))
+  }
+
+  disconnect(): Promise<void> {
+    return this.enqueue(() => this.disconnectPort())
+  }
 
   async listPorts(): Promise<
     Array<{
@@ -46,13 +74,11 @@ class SerialService extends EventEmitter {
     } catch (error) {
       console.error('Error al listar puertos seriales:', error)
 
-      throw new Error(
-        'No se pudieron obtener los puertos seriales disponibles.'
-      )
+      throw new Error('No se pudieron obtener los puertos seriales disponibles.')
     }
   }
 
-  async testConnection(
+  private async testPort(
     path: string,
     baudRate = 9600
   ): Promise<{
@@ -97,15 +123,11 @@ class SerialService extends EventEmitter {
 
       const timeoutId = setTimeout(() => {
         finish(() => {
-          reject(
-            new Error(
-              'El puerto se abrió, pero no se recibieron datos del prototipo.'
-            )
-          )
+          reject(new Error('El puerto se abrió, pero no se recibieron datos del prototipo.'))
         })
       }, 8000)
 
-      parser.once('data', (data: Buffer | string) => {
+      parser.on('data', (data: Buffer | string) => {
         const line = data.toString().trim()
 
         if (!line) {
@@ -123,25 +145,25 @@ class SerialService extends EventEmitter {
 
       testPort.once('error', (error) => {
         finish(() => {
-          reject(
-            new Error(this.getFriendlySerialError(error))
-          )
+          reject(new Error(this.getFriendlySerialError(error)))
         })
       })
 
       testPort.open((error) => {
+        if (!error && finished && testPort.isOpen) {
+          testPort.close(() => undefined)
+          return
+        }
         if (error) {
           finish(() => {
-            reject(
-              new Error(this.getFriendlySerialError(error))
-            )
+            reject(new Error(this.getFriendlySerialError(error)))
           })
         }
       })
     })
   }
 
-  async connect(
+  private async connectPort(
     path: string,
     baudRate = 9600
   ): Promise<{
@@ -162,7 +184,7 @@ class SerialService extends EventEmitter {
         }
       }
 
-      await this.disconnect()
+      await this.disconnectPort()
     }
 
     return new Promise((resolve, reject) => {
@@ -178,16 +200,16 @@ class SerialService extends EventEmitter {
         })
       )
 
+      port.on('error', (error) => {
+        if (this.port !== port) reject(new Error(this.getFriendlySerialError(error)))
+      })
       port.open((error) => {
         if (error) {
-          reject(
-            new Error(this.getFriendlySerialError(error))
-          )
+          reject(new Error(this.getFriendlySerialError(error)))
           return
         }
 
         this.port = port
-        this.parser = parser
         this.connectedPortPath = path
         this.currentMeasurement = {}
 
@@ -200,10 +222,7 @@ class SerialService extends EventEmitter {
         })
 
         port.on('error', (serialError) => {
-          console.error(
-            'Error durante la conexión serial:',
-            serialError
-          )
+          console.error('Error durante la conexión serial:', serialError)
 
           this.emit('connection-error', {
             message: this.getFriendlySerialError(serialError)
@@ -211,10 +230,12 @@ class SerialService extends EventEmitter {
         })
 
         port.on('close', () => {
+          port.unpipe(parser)
+          parser.removeAllListeners()
+          if (this.port !== port) return
           const disconnectedPath = this.connectedPortPath
 
           this.port = null
-          this.parser = null
           this.connectedPortPath = null
           this.currentMeasurement = {}
 
@@ -238,93 +259,96 @@ class SerialService extends EventEmitter {
   }
 
   processLine(line: string): void {
+    if (line.length > 512) {
+      this.currentMeasurement = {}
+      return
+    }
     this.emit('raw-line', line)
+    if (Date.now() - this.frameStartedAt > 10000) this.currentMeasurement = {}
 
-    const uvMatch = line.match(
-      /UV\s*ADC:\s*(-?\d+)\s*\|\s*Voltaje:\s*(-?[\d.]+)\s*V/i
-    )
+    const uvMatch = line.match(/UV\s*ADC:\s*(-?\d+)\s*\|\s*Voltaje:\s*(-?[\d.]+)\s*V/i)
 
     if (uvMatch) {
+      this.currentMeasurement = {}
+      this.frameStartedAt = Date.now()
       this.currentMeasurement.uvAdc = Number(uvMatch[1])
       this.currentMeasurement.uvVoltage = Number(uvMatch[2])
       return
     }
 
-    const levelMatch = line.match(
-      /Nivel:\s*(BAJO|MEDIO|ALTO)/i
-    )
+    const levelMatch = line.match(/Nivel:\s*(BAJO|MEDIO|ALTO)/i)
 
     if (levelMatch) {
-      this.currentMeasurement.level =
-        levelMatch[1].toUpperCase() as 'BAJO' | 'MEDIO' | 'ALTO'
+      if (this.currentMeasurement.level !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
+      this.currentMeasurement.level = levelMatch[1].toUpperCase() as 'BAJO' | 'MEDIO' | 'ALTO'
 
       return
     }
 
-    const luminosityMatch = line.match(
-      /Luz:\s*(-?[\d.]+)\s*lux/i
-    )
+    const luminosityMatch = line.match(/Luz:\s*(-?[\d.]+)\s*lux/i)
 
     if (luminosityMatch) {
-      this.currentMeasurement.luminosity = Number(
-        luminosityMatch[1]
-      )
+      if (this.currentMeasurement.luminosity !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
+      this.currentMeasurement.luminosity = Number(luminosityMatch[1])
       return
     }
 
-    const temperatureMatch = line.match(
-      /Temperatura:\s*(-?[\d.]+)\s*(?:°?\s*C)?/i
-    )
+    const temperatureMatch = line.match(/Temperatura:\s*(-?[\d.]+)\s*(?:°?\s*C)?/i)
 
     if (temperatureMatch) {
-      this.currentMeasurement.temperature = Number(
-        temperatureMatch[1]
-      )
+      if (this.currentMeasurement.temperature !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
+      this.currentMeasurement.temperature = Number(temperatureMatch[1])
       return
     }
 
-    const humidityMatch = line.match(
-      /Humedad:\s*(-?[\d.]+)\s*%/i
-    )
+    const humidityMatch = line.match(/Humedad:\s*(-?[\d.]+)\s*%/i)
 
     if (humidityMatch) {
-      this.currentMeasurement.humidity = Number(
-        humidityMatch[1]
-      )
+      if (this.currentMeasurement.humidity !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
+      this.currentMeasurement.humidity = Number(humidityMatch[1])
       return
     }
 
-    const pressureMatch = line.match(
-      /Presi[oó]n:\s*(-?[\d.]+)\s*hPa/i
-    )
+    const pressureMatch = line.match(/Presi[oó]n:\s*(-?[\d.]+)\s*hPa/i)
 
     if (pressureMatch) {
-      this.currentMeasurement.pressure = Number(
-        pressureMatch[1]
-      )
+      if (this.currentMeasurement.pressure !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
+      this.currentMeasurement.pressure = Number(pressureMatch[1])
       return
     }
 
-    const presenceMatch = line.match(
-      /Presencia:\s*(DETECTADA|NO\s+DETECTADA)/i
-    )
+    const presenceMatch = line.match(/Presencia:\s*(DETECTADA|NO\s+DETECTADA)/i)
 
     if (presenceMatch) {
+      if (this.currentMeasurement.presence !== undefined) {
+        this.currentMeasurement = {}
+        return
+      }
       this.currentMeasurement.presence =
-        presenceMatch[1]
-          .replace(/\s+/g, ' ')
-          .toUpperCase() === 'DETECTADA'
+        presenceMatch[1].replace(/\s+/g, ' ').toUpperCase() === 'DETECTADA'
 
       return
     }
 
-    const dateTimeMatch = line.match(
-      /Fecha\s+y\s+hora:\s*(.+)$/i
-    )
+    const dateTimeMatch = line.match(/Fecha\s+y\s+hora:\s*(.+)$/i)
 
     if (dateTimeMatch) {
-      this.currentMeasurement.dateTime =
-        dateTimeMatch[1].trim()
+      this.currentMeasurement.dateTime = dateTimeMatch[1].trim()
 
       const measurement: ParsedMeasurement = {
         uvAdc: this.currentMeasurement.uvAdc ?? null,
@@ -339,17 +363,35 @@ class SerialService extends EventEmitter {
         receivedAt: new Date().toISOString()
       }
 
-      this.emit('measurement', measurement)
+      const numeric = [
+        measurement.uvAdc,
+        measurement.uvVoltage,
+        measurement.luminosity,
+        measurement.temperature,
+        measurement.humidity,
+        measurement.pressure
+      ]
+      if (
+        numeric.every((value) => typeof value === 'number' && Number.isFinite(value)) &&
+        measurement.uvAdc! >= 0 &&
+        measurement.uvVoltage! >= 0 &&
+        measurement.luminosity! >= 0 &&
+        measurement.humidity! >= 0 &&
+        measurement.humidity! <= 100 &&
+        measurement.pressure! > 0 &&
+        measurement.level !== null &&
+        measurement.presence !== null &&
+        measurement.dateTime!.length <= 30
+      ) {
+        this.emit('measurement', measurement)
+      }
       this.currentMeasurement = {}
     }
   }
 
-  async disconnect(): Promise<void> {
-    this.parser?.removeAllListeners()
-
+  private async disconnectPort(): Promise<void> {
     if (!this.port?.isOpen) {
       this.port = null
-      this.parser = null
       this.connectedPortPath = null
       this.currentMeasurement = {}
       return
@@ -360,9 +402,7 @@ class SerialService extends EventEmitter {
     await new Promise<void>((resolve, reject) => {
       portToClose.close((error) => {
         if (error) {
-          reject(
-            new Error(this.getFriendlySerialError(error))
-          )
+          reject(new Error(this.getFriendlySerialError(error)))
           return
         }
 
@@ -382,20 +422,13 @@ class SerialService extends EventEmitter {
   }
 
   getFriendlySerialError(error: unknown): string {
-    const message =
-      error instanceof Error ? error.message : String(error ?? '')
+    const message = error instanceof Error ? error.message : String(error ?? '')
 
-    if (
-      message.includes('Access denied') ||
-      message.includes('Permission denied')
-    ) {
+    if (message.includes('Access denied') || message.includes('Permission denied')) {
       return 'El puerto está siendo utilizado por otra aplicación. Cierra el monitor serial de Arduino IDE.'
     }
 
-    if (
-      message.includes('File not found') ||
-      message.includes('No such file')
-    ) {
+    if (message.includes('File not found') || message.includes('No such file')) {
       return 'El puerto seleccionado ya no está disponible.'
     }
 

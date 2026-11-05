@@ -1,7 +1,7 @@
 import AppRouter from './router/AppRouter'
 import { AppProvider } from './context/AppContext'
 
-function App() {
+function App(): React.JSX.Element {
   return (
     <AppProvider>
       <AppRouter />

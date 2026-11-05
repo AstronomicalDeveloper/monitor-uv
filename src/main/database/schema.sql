@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS sesion_medicion (
     estado ENUM('ACTIVA', 'FINALIZADA', 'CANCELADA') NOT NULL DEFAULT 'ACTIVA',
     total_muestras INT NOT NULL DEFAULT 0,
     creado_en DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS medicion_ambiental (
     medicion_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS medicion_ambiental (
         FOREIGN KEY (sesion_id)
         REFERENCES sesion_medicion(sesion_id)
         ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE INDEX IF NOT EXISTS idx_medicion_sesion_fecha
 ON medicion_ambiental(sesion_id, fecha_hora_recepcion);

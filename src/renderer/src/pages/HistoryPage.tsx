@@ -20,34 +20,28 @@ function formatNumber(value: number | null, decimals = 2): string {
   return value.toFixed(decimals)
 }
 
-function HistoryPage() {
+function HistoryPage(): React.JSX.Element {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function loadSessions(): Promise<void> {
-    setLoading(true)
-    setError('')
-
-    try {
-      const result = await window.api.database.listSessions()
-
-      if (!result.success || !result.data) {
-        setError(
-          result.message ||
-            'No se pudo cargar el historial.'
-        )
-        setSessions([])
-        return
-      }
-
-      setSessions(result.data)
-    } catch (loadError) {
-      console.error('Error al cargar historial:', loadError)
-      setError('No fue posible consultar MariaDB.')
-    } finally {
-      setLoading(false)
-    }
+  function loadSessions(): Promise<void> {
+    return window.api.database
+      .listSessions()
+      .then((result) => {
+        if (!result.success || !result.data) {
+          setError(result.message || 'No se pudo cargar el historial.')
+          setSessions([])
+          return
+        }
+        setSessions(result.data)
+      })
+      .catch(() => {
+        setError('No fue posible consultar MariaDB.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   useEffect(() => {
@@ -62,18 +56,18 @@ function HistoryPage() {
             Sesiones almacenadas
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Historial
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Historial</h1>
 
-          <p className="mt-2 text-slate-500">
-            Consulta las sesiones guardadas en MariaDB.
-          </p>
+          <p className="mt-2 text-slate-500">Consulta las sesiones guardadas en MariaDB.</p>
         </div>
 
         <Button
           variant="secondary"
-          onClick={loadSessions}
+          onClick={() => {
+            setLoading(true)
+            setError('')
+            void loadSessions()
+          }}
           disabled={loading}
         >
           {loading ? 'Cargando...' : 'Actualizar'}
@@ -89,9 +83,7 @@ function HistoryPage() {
       <GlassPanel>
         {sessions.length === 0 && !loading ? (
           <div className="p-10 text-center">
-            <h2 className="text-xl font-semibold text-slate-800">
-              No hay sesiones registradas
-            </h2>
+            <h2 className="text-xl font-semibold text-slate-800">No hay sesiones registradas</h2>
 
             <p className="mt-2 text-slate-500">
               Las sesiones finalizadas aparecerán en esta pantalla.
@@ -114,32 +106,17 @@ function HistoryPage() {
 
               <tbody>
                 {sessions.map((session) => (
-                  <tr
-                    key={session.sessionId}
-                    className="border-b border-white/50 text-slate-700"
-                  >
+                  <tr key={session.sessionId} className="border-b border-white/50 text-slate-700">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-800">
-                        {session.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {session.location || 'Sin lugar'}
-                      </p>
+                      <p className="font-semibold text-slate-800">{session.name}</p>
+                      <p className="text-xs text-slate-500">{session.location || 'Sin lugar'}</p>
                     </td>
+                    <td className="px-4 py-3">{formatDate(session.startedAt)}</td>
                     <td className="px-4 py-3">
-                      {formatDate(session.startedAt)}
+                      {session.mode === 'timed' ? 'Temporizada' : 'Manual'}
                     </td>
-                    <td className="px-4 py-3">
-                      {session.mode === 'timed'
-                        ? 'Temporizada'
-                        : 'Manual'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {session.totalSamples}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatNumber(session.uvMax, 3)} V
-                    </td>
+                    <td className="px-4 py-3">{session.totalSamples}</td>
+                    <td className="px-4 py-3">{formatNumber(session.uvMax, 3)} V</td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-slate-600">
                         {session.status === 'finished'

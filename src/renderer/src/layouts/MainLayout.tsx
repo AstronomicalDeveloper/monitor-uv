@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Navbar from '../components/navigation/Navbar'
 
-function MainLayout() {
+function MainLayout(): React.JSX.Element {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-linear-to-br from-emerald-50 via-slate-50 to-violet-100 text-slate-800">
       <div className="pointer-events-none fixed -left-24 top-20 h-96 w-96 rounded-full bg-emerald-200/45 blur-3xl" />

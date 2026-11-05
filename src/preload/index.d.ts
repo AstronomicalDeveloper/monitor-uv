@@ -17,9 +17,7 @@ import type {
 export interface SerialApi {
   listPorts: () => Promise<SerialResult<SerialPortInfo[]>>
 
-  testConnection: (
-    configuration: SerialConfiguration
-  ) => Promise<
+  testConnection: (configuration: SerialConfiguration) => Promise<
     SerialResult<{
       path: string
       baudRate: number
@@ -27,9 +25,7 @@ export interface SerialApi {
     }>
   >
 
-  connect: (
-    configuration: SerialConfiguration
-  ) => Promise<
+  connect: (configuration: SerialConfiguration) => Promise<
     SerialResult<{
       path: string
       baudRate: number
@@ -41,55 +37,35 @@ export interface SerialApi {
 
   getState: () => Promise<SerialResult<SerialConnectionState>>
 
-  onMeasurement: (
-    callback: (measurement: Measurement) => void
-  ) => () => void
+  onMeasurement: (callback: (measurement: Measurement) => void) => () => void
 
-  onDisconnected: (
-    callback: (data: { path: string | null }) => void
-  ) => () => void
+  onDisconnected: (callback: (data: { path: string | null }) => void) => () => void
 
-  onConnectionError: (
-    callback: (data: { message: string }) => void
-  ) => () => void
+  onConnectionError: (callback: (data: { message: string }) => void) => () => void
 }
 
 export interface DatabaseApi {
   testConnection: () => Promise<SerialResult>
 
-  createSession: (
-    request: CreateSessionRequest
-  ) => Promise<SerialResult<{ sessionId: number }>>
+  createSession: (request: CreateSessionRequest) => Promise<SerialResult<{ sessionId: number }>>
 
   saveMeasurement: (
     request: SaveMeasurementRequest
   ) => Promise<SerialResult<{ measurementId: number }>>
 
-  finishSession: (
-    request: { sessionId: number; finishedAt: string }
-  ) => Promise<SerialResult>
+  finishSession: (request: { sessionId: number; finishedAt: string }) => Promise<SerialResult>
 
-  cancelSession: (
-    request: { sessionId: number; finishedAt: string }
-  ) => Promise<SerialResult>
+  cancelSession: (request: { sessionId: number; finishedAt: string }) => Promise<SerialResult>
 
   listSessions: () => Promise<SerialResult<SessionSummary[]>>
 
-  getSessionDetail: (
-    sessionId: number
-  ) => Promise<SerialResult<SessionDetail>>
+  getSessionDetail: (sessionId: number) => Promise<SerialResult<SessionDetail>>
 
-  getReport: (
-    sessionIds: number[]
-  ) => Promise<SerialResult<ReportSummary>>
+  getReport: (sessionIds: number[]) => Promise<SerialResult<ReportSummary>>
 
-  exportReportCsv: (
-    sessionIds: number[]
-  ) => Promise<SerialResult<ExportResult>>
+  exportReportCsv: (sessionIds: number[]) => Promise<SerialResult<ExportResult>>
 
-  exportReportPdf: (
-    sessionIds: number[]
-  ) => Promise<SerialResult<ExportResult>>
+  exportReportPdf: (sessionIds: number[]) => Promise<SerialResult<ExportResult>>
 }
 
 declare global {
@@ -98,7 +74,5 @@ declare global {
       serial: SerialApi
       database: DatabaseApi
     }
-
-    electron: unknown
   }
 }

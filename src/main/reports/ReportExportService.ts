@@ -16,7 +16,8 @@ function escapeHtml(value: unknown): string {
 }
 
 function escapeCsv(value: unknown): string {
-  const text = String(value ?? '')
+  const raw = String(value ?? '')
+  const text = typeof value === 'string' && /^[\s]*[=+@-]/.test(raw) ? `'${raw}` : raw
 
   if (/[",\n\r;]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`
@@ -25,39 +26,23 @@ function escapeCsv(value: unknown): string {
   return text
 }
 
-function formatNumber(
-  value: number | null | undefined,
-  decimals = 2
-): string {
-  if (
-    value === null ||
-    value === undefined ||
-    Number.isNaN(value)
-  ) {
+function formatNumber(value: number | null | undefined, decimals = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
     return '--'
   }
 
   return value.toFixed(decimals)
 }
 
-function getSessionMap(
-  report: ReportSummary
-): Map<number, SessionSummary> {
-  return new Map(
-    report.sessions.map((session) => [
-      session.sessionId,
-      session
-    ])
-  )
+function getSessionMap(report: ReportSummary): Map<number, SessionSummary> {
+  return new Map(report.sessions.map((session) => [session.sessionId, session]))
 }
 
 function pad(value: number): string {
   return value.toString().padStart(2, '0')
 }
 
-function buildExportTimestamp(
-  date = new Date()
-): string {
+function buildExportTimestamp(date = new Date()): string {
   const year = date.getFullYear()
   const month = pad(date.getMonth() + 1)
   const day = pad(date.getDate())
@@ -68,9 +53,7 @@ function buildExportTimestamp(
   return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`
 }
 
-function buildDefaultFileName(
-  extension: 'csv' | 'pdf'
-): string {
+function buildDefaultFileName(extension: 'csv' | 'pdf'): string {
   return `reporte-uv-agrupado_${buildExportTimestamp()}.${extension}`
 }
 
@@ -115,17 +98,11 @@ function buildCsv(report: ReportSummary): string {
       measurement.temperature ?? '',
       measurement.humidity ?? '',
       measurement.pressure ?? '',
-      measurement.presence === null
-        ? ''
-        : measurement.presence
-          ? '1'
-          : '0'
+      measurement.presence === null ? '' : measurement.presence ? '1' : '0'
     ].map(escapeCsv)
   })
 
-  return [headers.map(escapeCsv), ...rows]
-    .map((row) => row.join(';'))
-    .join('\n')
+  return [headers.map(escapeCsv), ...rows].map((row) => row.join(';')).join('\n')
 }
 
 function buildChartSvg(
@@ -133,11 +110,7 @@ function buildChartSvg(
   measurements: StoredMeasurement[],
   key: keyof Pick<
     StoredMeasurement,
-    | 'uvVoltage'
-    | 'temperature'
-    | 'humidity'
-    | 'pressure'
-    | 'luminosity'
+    'uvVoltage' | 'temperature' | 'humidity' | 'pressure' | 'luminosity'
   >,
   unit: string,
   yLabel: string
@@ -145,10 +118,7 @@ function buildChartSvg(
   const validPoints = measurements
     .map((measurement, index) => ({
       index,
-      label:
-        measurement.dateTime ||
-        measurement.receivedAt ||
-        `Muestra ${index + 1}`,
+      label: measurement.dateTime || measurement.receivedAt || `Muestra ${index + 1}`,
       value: measurement[key]
     }))
     .filter(
@@ -158,10 +128,7 @@ function buildChartSvg(
         index: number
         label: string
         value: number
-      } =>
-        point.value !== null &&
-        point.value !== undefined &&
-        !Number.isNaN(point.value)
+      } => point.value !== null && point.value !== undefined && Number.isFinite(point.value)
     )
 
   if (validPoints.length < 2) {
@@ -183,71 +150,48 @@ function buildChartSvg(
   const paddingTop = 34
   const paddingBottom = 56
 
-  const innerWidth =
-    width - paddingLeft - paddingRight
+  const innerWidth = width - paddingLeft - paddingRight
 
-  const innerHeight =
-    height - paddingTop - paddingBottom
+  const innerHeight = height - paddingTop - paddingBottom
 
-  const values = validPoints.map(
-    (point) => point.value
-  )
+  const values = validPoints.map((point) => point.value)
 
-  const rawMin = Math.min(...values)
-  const rawMax = Math.max(...values)
+  const rawMin = values.reduce((min, value) => Math.min(min, value), Infinity)
+  const rawMax = values.reduce((max, value) => Math.max(max, value), -Infinity)
 
   /*
    * Si todos los valores son iguales, agregamos margen.
    * Así la línea horizontal no desaparece pegada al borde.
    */
   const domainPadding =
-    rawMax === rawMin
-      ? Math.max(Math.abs(rawMax) * 0.08, 1)
-      : (rawMax - rawMin) * 0.08
+    rawMax === rawMin ? Math.max(Math.abs(rawMax) * 0.08, 1) : (rawMax - rawMin) * 0.08
 
   const min = rawMin - domainPadding
   const max = rawMax + domainPadding
   const range = max - min || 1
 
-  const coordinates = validPoints.map(
-    (point, index) => {
-      const x =
-        paddingLeft +
-        (index /
-          Math.max(validPoints.length - 1, 1)) *
-          innerWidth
+  const coordinates = validPoints.map((point, index) => {
+    const x = paddingLeft + (index / Math.max(validPoints.length - 1, 1)) * innerWidth
 
-      const y =
-        paddingTop +
-        innerHeight -
-        ((point.value - min) / range) *
-          innerHeight
+    const y = paddingTop + innerHeight - ((point.value - min) / range) * innerHeight
 
-      return {
-        ...point,
-        x,
-        y
-      }
+    return {
+      ...point,
+      x,
+      y
     }
-  )
+  })
 
   const polyline = coordinates
-    .map(
-      (point) =>
-        `${point.x.toFixed(2)},${point.y.toFixed(2)}`
-    )
+    .map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`)
     .join(' ')
 
   const first = coordinates[0]
   const last = coordinates[coordinates.length - 1]
 
-  const middleGridY =
-    paddingTop + innerHeight / 2
+  const middleGridY = paddingTop + innerHeight / 2
 
-  const pointStep = Math.max(
-    Math.ceil(coordinates.length / 8),
-    1
-  )
+  const pointStep = Math.max(Math.ceil(coordinates.length / 8), 1)
 
   return `
     <section class="chart-block">
@@ -357,10 +301,7 @@ function buildChartSvg(
 
         ${coordinates
           .filter(
-            (_, index) =>
-              index === 0 ||
-              index === coordinates.length - 1 ||
-              index % pointStep === 0
+            (_, index) => index === 0 || index === coordinates.length - 1 || index % pointStep === 0
           )
           .map(
             (point) => `
@@ -382,26 +323,19 @@ function buildReportHtml(report: ReportSummary): string {
   const { sessions, stats, measurements } = report
 
   const locations =
-    Array.from(
-      new Set(
-        sessions
-          .map((session) => session.location)
-          .filter(Boolean)
-      )
-    ).join(', ') || '--'
+    Array.from(new Set(sessions.map((session) => session.location).filter(Boolean))).join(', ') ||
+    '--'
 
-  const descriptions = sessions.filter(
-    (session) => session.description?.trim()
-  )
+  const descriptions = sessions.filter((session) => session.description?.trim())
 
-  const generatedAt =
-    new Date().toLocaleString('es-PE')
+  const generatedAt = new Date().toLocaleString('es-PE')
 
   return `
     <!doctype html>
     <html lang="es">
       <head>
         <meta charset="utf-8" />
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
         <title>Reporte agrupado UV</title>
 
         <style>
@@ -761,45 +695,15 @@ function buildReportHtml(report: ReportSummary): string {
 
           <h2>4. Gráficas agrupadas</h2>
 
-          ${buildChartSvg(
-            'Radiación UV',
-            measurements,
-            'uvVoltage',
-            'V',
-            'Voltaje UV'
-          )}
+          ${buildChartSvg('Radiación UV', measurements, 'uvVoltage', 'V', 'Voltaje UV')}
 
-          ${buildChartSvg(
-            'Temperatura',
-            measurements,
-            'temperature',
-            '°C',
-            'Temperatura'
-          )}
+          ${buildChartSvg('Temperatura', measurements, 'temperature', '°C', 'Temperatura')}
 
-          ${buildChartSvg(
-            'Humedad',
-            measurements,
-            'humidity',
-            '%',
-            'Humedad'
-          )}
+          ${buildChartSvg('Humedad', measurements, 'humidity', '%', 'Humedad')}
 
-          ${buildChartSvg(
-            'Luminosidad',
-            measurements,
-            'luminosity',
-            'lux',
-            'Luminosidad'
-          )}
+          ${buildChartSvg('Luminosidad', measurements, 'luminosity', 'lux', 'Luminosidad')}
 
-          ${buildChartSvg(
-            'Presión atmosférica',
-            measurements,
-            'pressure',
-            'hPa',
-            'Presión'
-          )}
+          ${buildChartSvg('Presión atmosférica', measurements, 'pressure', 'hPa', 'Presión')}
 
           <p class="footer">
             Reporte generado por el sistema de monitoreo de radiación ultravioleta.
@@ -811,9 +715,7 @@ function buildReportHtml(report: ReportSummary): string {
 }
 
 class ReportExportService {
-  async exportCsv(
-    report: ReportSummary
-  ): Promise<string | null> {
+  async exportCsv(report: ReportSummary): Promise<string | null> {
     const result = await dialog.showSaveDialog({
       title: 'Exportar reporte agrupado en CSV',
       defaultPath: buildDefaultFileName('csv'),
@@ -829,18 +731,12 @@ class ReportExportService {
       return null
     }
 
-    await writeFile(
-      result.filePath,
-      buildCsv(report),
-      'utf8'
-    )
+    await writeFile(result.filePath, buildCsv(report), 'utf8')
 
     return result.filePath
   }
 
-  async exportPdf(
-    report: ReportSummary
-  ): Promise<string | null> {
+  async exportPdf(report: ReportSummary): Promise<string | null> {
     const result = await dialog.showSaveDialog({
       title: 'Exportar reporte agrupado en PDF',
       defaultPath: buildDefaultFileName('pdf'),
@@ -861,34 +757,36 @@ class ReportExportService {
       width: 1024,
       height: 1400,
       webPreferences: {
-        sandbox: false
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        javascript: false
       }
     })
 
     try {
       const html = buildReportHtml(report)
 
-      await window.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
-      )
+      await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
 
-      const pdf =
-        await window.webContents.printToPDF({
-          printBackground: true,
-          pageSize: 'A4',
-          margins: {
-            marginType: 'none'
-          }
-        })
+      const pdf = await window.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: {
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0
+        }
+      })
 
       await writeFile(result.filePath, pdf)
 
       return result.filePath
     } finally {
-      window.close()
+      window.destroy()
     }
   }
 }
 
-export const reportExportService =
-  new ReportExportService()
+export const reportExportService = new ReportExportService()

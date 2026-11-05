@@ -12,14 +12,12 @@ function GlassCard({
   className = '',
   padding = 'p-5',
   solid = false
-}: GlassCardProps) {
+}: GlassCardProps): React.JSX.Element {
   return (
     <article
       className={[
         'rounded-3xl border border-white/70 shadow-lg shadow-violet-200/20',
-        solid
-          ? 'bg-white/85'
-          : 'bg-white/50 backdrop-blur-2xl',
+        solid ? 'bg-white/85' : 'bg-white/50 backdrop-blur-2xl',
         padding,
         className
       ].join(' ')}

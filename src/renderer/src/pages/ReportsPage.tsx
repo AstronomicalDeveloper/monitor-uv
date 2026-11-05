@@ -4,33 +4,30 @@ import Button from '../components/common/Button'
 import GlassPanel from '../components/glass/GlassPanel'
 import type { SessionSummary } from '../types/database'
 
-function ReportsPage() {
+function ReportsPage(): React.JSX.Element {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [dateFilter, setDateFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function loadSessions(): Promise<void> {
-    setLoading(true)
-    setError('')
-
-    try {
-      const result = await window.api.database.listSessions()
-
-      if (!result.success || !result.data) {
-        setError(result.message || 'No se pudieron cargar las sesiones.')
-        setSessions([])
-        return
-      }
-
-      setSessions(result.data.filter((session) => session.totalSamples > 0))
-    } catch (loadError) {
-      console.error('Error al cargar sesiones para reporte:', loadError)
-      setError('No fue posible consultar MariaDB.')
-    } finally {
-      setLoading(false)
-    }
+  function loadSessions(): Promise<void> {
+    return window.api.database
+      .listSessions()
+      .then((result) => {
+        if (!result.success || !result.data) {
+          setError(result.message || 'No se pudieron cargar las sesiones.')
+          setSessions([])
+          return
+        }
+        setSessions(result.data.filter((session) => session.totalSamples > 0))
+      })
+      .catch(() => {
+        setError('No fue posible consultar MariaDB.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   useEffect(() => {
@@ -42,9 +39,7 @@ function ReportsPage() {
       return sessions
     }
 
-    return sessions.filter((session) =>
-      session.startedAt?.startsWith(dateFilter)
-    )
+    return sessions.filter((session) => session.startedAt?.startsWith(dateFilter))
   }, [sessions, dateFilter])
 
   function toggleSession(sessionId: number): void {
@@ -59,9 +54,7 @@ function ReportsPage() {
     setSelectedIds(filteredSessions.map((session) => session.sessionId))
   }
 
-  const reportPath = selectedIds.length
-    ? `/reportes/${selectedIds.join(',')}`
-    : '/reportes'
+  const reportPath = selectedIds.length ? `/reportes/${selectedIds.join(',')}` : '/reportes'
 
   return (
     <section className="space-y-6">
@@ -71,16 +64,22 @@ function ReportsPage() {
             Análisis
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">
-            Reportes
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Reportes</h1>
 
           <p className="mt-2 text-slate-500">
             Selecciona una o varias sesiones para analizar sus datos en conjunto.
           </p>
         </div>
 
-        <Button variant="secondary" onClick={loadSessions} disabled={loading}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setLoading(true)
+            setError('')
+            void loadSessions()
+          }}
+          disabled={loading}
+        >
           {loading ? 'Cargando...' : 'Actualizar'}
         </Button>
       </header>
@@ -110,9 +109,7 @@ function ReportsPage() {
       >
         <div className="mb-5 flex flex-wrap items-end gap-3">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Fecha
-            </label>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">Fecha</label>
             <input
               type="date"
               value={dateFilter}
@@ -125,10 +122,7 @@ function ReportsPage() {
             Seleccionar visibles
           </Button>
 
-          <Button
-            variant="secondary"
-            onClick={() => setSelectedIds([])}
-          >
+          <Button variant="secondary" onClick={() => setSelectedIds([])}>
             Limpiar selección
           </Button>
         </div>
@@ -158,7 +152,9 @@ function ReportsPage() {
                   <p className="mt-1 text-sm text-slate-500">{session.location || 'Sin lugar'}</p>
                   <div className="mt-4 flex items-center justify-between text-sm">
                     <span className="text-slate-500">Muestras: {session.totalSamples}</span>
-                    <span className="font-semibold text-violet-700">UV máx: {session.uvMax?.toFixed(3) ?? '--'} V</span>
+                    <span className="font-semibold text-violet-700">
+                      UV máx: {session.uvMax?.toFixed(3) ?? '--'} V
+                    </span>
                   </div>
                 </button>
               )

@@ -1,9 +1,4 @@
-import {
-  HashRouter,
-  Navigate,
-  Route,
-  Routes
-} from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import MainLayout from '../layouts/MainLayout'
 import ConnectionPage from '../pages/ConnectionPage'
@@ -15,55 +10,28 @@ import ReportsPage from '../pages/ReportsPage'
 import ReportDetailPage from '../pages/ReportDetailPage'
 import NotFoundPage from '../pages/NotFoundPage'
 
-function AppRouter() {
+function AppRouter(): React.JSX.Element {
   return (
     <HashRouter>
       <Routes>
-        <Route
-          path="/"
-          element={<Navigate to="/conexion" replace />}
-        />
+        <Route path="/" element={<Navigate to="/conexion" replace />} />
 
-        <Route
-          path="/conexion"
-          element={<ConnectionPage />}
-        />
+        <Route path="/conexion" element={<ConnectionPage />} />
 
         <Route element={<MainLayout />}>
-          <Route
-            path="/monitoreo"
-            element={<MonitoringPage />}
-          />
+          <Route path="/monitoreo" element={<MonitoringPage />} />
 
-          <Route
-            path="/captura/nueva"
-            element={<NewCapturePage />}
-          />
+          <Route path="/captura/nueva" element={<NewCapturePage />} />
 
-          <Route
-            path="/historial"
-            element={<HistoryPage />}
-          />
+          <Route path="/historial" element={<HistoryPage />} />
 
-          <Route
-            path="/historial/:sessionId"
-            element={<HistoryDetailPage />}
-          />
+          <Route path="/historial/:sessionId" element={<HistoryDetailPage />} />
 
-          <Route
-            path="/reportes"
-            element={<ReportsPage />}
-          />
+          <Route path="/reportes" element={<ReportsPage />} />
 
-          <Route
-            path="/reportes/:reportId"
-            element={<ReportDetailPage />}
-          />
+          <Route path="/reportes/:reportId" element={<ReportDetailPage />} />
 
-          <Route
-            path="*"
-            element={<NotFoundPage />}
-          />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </HashRouter>

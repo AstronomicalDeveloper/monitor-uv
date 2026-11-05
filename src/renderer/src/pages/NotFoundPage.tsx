@@ -1,16 +1,12 @@
 import { Link } from 'react-router-dom'
 
-function NotFoundPage() {
+function NotFoundPage(): React.JSX.Element {
   return (
     <section className="flex min-h-[70vh] items-center justify-center">
       <div className="text-center">
-        <p className="text-7xl font-bold text-violet-400">
-          404
-        </p>
+        <p className="text-7xl font-bold text-violet-400">404</p>
 
-        <h1 className="mt-4 text-2xl font-bold">
-          Pantalla no encontrada
-        </h1>
+        <h1 className="mt-4 text-2xl font-bold">Pantalla no encontrada</h1>
 
         <Link
           to="/monitoreo"
